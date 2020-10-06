@@ -1,0 +1,159 @@
+---
+title: "Movie Project Writeup"
+author: "Evangeline Chen, Josh Walls"
+date: "4/8/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+## 2-Data Cleaning 
+We did have missing data and in our clean version we removed 920 data points from the original data that we did not have complete information for. We also removed the predictors director_name, actor_2_name, movie_title, actor_1_name, actor_3_name, plot_keywords, and movie_imdb_link because we did not believe they were useful predictors for our analysis since none of those predictors would have anything to do with the gross response variable. We also log transformed the response variable gross. 
+```{r}
+Movie <- read.csv("~/Downloads/Movie.csv")
+MovieClean <- na.omit(Movie)
+MovieClean1 <- MovieClean[,-c(2,7,10,11,12,15,17,18)]
+MovieClean1$gross <- log(MovieClean1$gross)
+colnames(MovieClean1)[7] <- "logGross"
+Movie$gross <- log(Movie$gross)
+colnames(Movie)[9] <- "logGross"
+```
+## 3-Exploratory Data Analysis 
+For our rough model, we tried plotting one variable of each of the predictors we had not already eliminated in the data cleaning section against the log gross as response variable. From there we tried to transform variables to try to make the plots more linear. We did not have significant outliers after we transformed the explanatory variables so we did not need to anything besides transform the predictors to deal with outliers. 
+In this process we eliminate some variablees because we can't see clear linear relationship between logGross and actor_1_facebook_likes, actor_2_facebook_likes, actor_3_facebook_likes, director facebook likes, movie facebook likes, cast total facebook likes and title year even after transformed(we did square root for facebook likes because they contain zero).
+```{r}
+op  <- par(mfrow = c(2,2))
+#plot 1
+MovieClean1$num_critic_for_reviews <- log(MovieClean1$num_critic_for_reviews)
+colnames(MovieClean1)[2] <- "LogNum_critic_for_reviews"
+m2 <-lm(MovieClean1$logGross~MovieClean1$LogNum_critic_for_reviews)
+plot(MovieClean1$logGross~MovieClean1$LogNum_critic_for_reviews)
+abline(m2)
+#plot 2
+MovieClean1$num_user_for_reviews <-log(MovieClean1$num_user_for_reviews)
+colnames(MovieClean1)[11] <- "LogNum_user_for_reviews"
+m4 <-lm(MovieClean1$logGross~MovieClean1$LogNum_user_for_review)
+plot(MovieClean1$logGross~MovieClean1$LogNum_user_for_review)
+abline(m4)
+#plot 3
+MovieClean1$duration <- log(MovieClean1$duration)
+colnames(MovieClean1)[3] <- "LogDuration"
+m11 <-lm(MovieClean1$logGross~MovieClean1$LogDuration)
+plot(MovieClean1$logGross~MovieClean1$LogDuration)
+abline(m11)
+#plot4
+MovieClean1$budget <-log(MovieClean1$budget)
+colnames(MovieClean1)[15] <- "LogBudget"
+m13 <-lm(MovieClean1$logGross~MovieClean1$LogBudget)
+plot(MovieClean1$logGross~MovieClean1$LogBudget)
+abline(m13)
+```
+```{r}
+op  <- par(mfrow = c(2,2))
+#plot 1
+MovieClean1$title_year <-log(MovieClean1$title_year)
+colnames(MovieClean1)[16] <- "LogTitle_year"
+m15 <-lm(MovieClean1$logGross~MovieClean1$LogTitle_year)
+plot(MovieClean1$logGross~MovieClean1$LogTitle_year)
+abline(m15)
+m16 <-lm(Movie$logGross~Movie$imdb_score)
+#plot 2
+MovieClean1$imdb_score <-log(MovieClean1$imdb_score)
+colnames(MovieClean1)[18] <- "LogImdb_score"
+m17 <-lm(MovieClean1$logGross~MovieClean1$LogImdb_score)
+plot(MovieClean1$logGross~MovieClean1$LogImdb_score)
+abline(m17)
+#plot 3
+MovieClean1$aspect_ratio <-log(MovieClean1$aspect_ratio)
+colnames(MovieClean1)[19] <- "LogAspect_ratio"
+m19 <-lm(MovieClean1$logGross~MovieClean1$LogAspect_ratio)
+plot(MovieClean1$logGross~MovieClean1$LogAspect_ratio)
+abline(m19)
+#plot 4
+MovieClean1$num_voted_users <-log(MovieClean1$num_voted_users)
+colnames(MovieClean1)[8] <- "LogNum_voted_users"
+m21 <-lm(MovieClean1$logGross~MovieClean1$LogNum_voted_users)
+plot(MovieClean1$logGross~MovieClean1$LogNum_voted_users)
+abline(m21)
+```
+For categorical variables, we convert them into categorical,  sort all levels with less than five observatios into "other" for each category and then create indicators for each level. The respective baselines for content rating, genre, language and color are "Approved","Action", "English" and "black".
+```{r}
+MovieClean2$color <- as.factor(MovieClean2$color)
+MovieClean2 <- MovieClean1[,-c(4,5,6,9,10,16,17,19,20)]
+levels(MovieClean2$content_rating) <- c(levels(MovieClean2$content_rating), "OtherRating")
+Content_RatingOther <- which(MovieClean2$content_rating %in% c("Approved","G", "NC-17", "Not Rated", "PG", "PG-13", "R","Unrated","X"))
+Content_Rating <- MovieClean2$content_rating
+Content_Rating[-Content_RatingOther] <- "OtherRating"
+MovieClean2$Content_Rating <- factor(Content_Rating)
+
+levels(MovieClean2$Genre) <- c(levels(MovieClean2$Genre), "Other")
+genreOther <- which(MovieClean2$Genre %in% c("Action","Adventure", "Biography", "Crime", "Drama", "Comedy", "Horror"))
+genre <- MovieClean2$Genre
+genre[-genreOther] <- "Other"
+MovieClean2$genre <- factor(genre)
+
+levels(MovieClean2$language) <- c(levels(MovieClean2$language), "OtherL")
+LanguageOther <- which(MovieClean2$language %in% c("English","Japanese", "Hindi", "Portuguese", "Spanish", "Russian", "Cantonese"))
+Language <- MovieClean2$language
+Language[-LanguageOther] <- "OtherL"
+MovieClean2$Language <- factor(Language)
+Cantonese <- ifelse(MovieClean2$Language == "Cantonese", 1, 0)
+Japanese <- ifelse(MovieClean2$Language == "Japanese", 1, 0)
+Hindi <- ifelse(MovieClean2$Language == "Hindi", 1, 0)
+Portuguese <- ifelse(MovieClean2$Language == "Portuguese", 1, 0)
+Spanish <- ifelse(MovieClean2$Language == "Spanish", 1, 0)
+Russian <- ifelse(MovieClean2$Language == "Russian", 1, 0)
+OtherLan <- ifelse(MovieClean2$Language == "OtherL", 1, 0)
+
+Biography <- ifelse(MovieClean2$genre == "Biography", 1, 0)
+Adventure <- ifelse(MovieClean2$genre == "Adventure", 1, 0)
+Crime <- ifelse(MovieClean2$genre == "Crime", 1, 0)
+Drama <- ifelse(MovieClean2$genre == "Drama", 1, 0)
+Comedy <- ifelse(MovieClean2$genre == "Comedy", 1, 0)
+Horror <- ifelse(MovieClean2$genre == "Horror", 1, 0)
+Other <- ifelse(MovieClean2$genre == "Other", 1, 0)
+
+Gyes <- ifelse(MovieClean2$Content_Rating == "G", 1, 0)
+NC17 <- ifelse(MovieClean2$Content_Rating == "NC-17", 1, 0)
+NotRated <- ifelse(MovieClean2$Content_Rating == "Not Rated", 1, 0)
+PGyes <- ifelse(MovieClean2$Content_Rating == "PG", 1, 0)
+PG13yes <- ifelse(MovieClean2$Content_Rating == "PG-13", 1, 0)
+Ryes <- ifelse(MovieClean2$Content_Rating == "R", 1, 0)
+Unratedyes <- ifelse(MovieClean2$Content_Rating == "Unrated", 1, 0)
+Xyes <- ifelse(MovieClean2$Content_Rating == "X", 1, 0)
+OtherRating<- ifelse(MovieClean2$Content_Rating == "OtherRating", 1, 0)
+
+Color <- ifelse(MovieClean2$color == "Color", 1, 0)
+```
+We also made a correlation matrix for all the numeric variables we keep at this point and find that there is high correlation (0.862) between LogNum_user_for_reviews and LogNum_voted_users. We'll keep an eye on these two variables when we do F-Nested test later. 
+```{r}
+#cor(MovieClean2[ , c(2,3,4,5,6,10)])
+```
+## 4-Model Selection
+```{r}
+#install.packages("leaps")
+library(leaps)
+BSSout <-   regsubsets(logGross ~ LogNum_voted_users + LogImdb_score + LogNum_user_for_reviews + LogNum_critic_for_reviews + LogDuration + LogBudget  + Cantonese + Japanese + Hindi + Portuguese + Spanish + OtherLan + Biography + Adventure + Crime + Comedy + Horror + Other + Gyes + NC17 + NotRated + PGyes + PG13yes + Ryes + Unratedyes + Xyes + OtherRating + Color , nvmax=15,data = MovieClean2)
+(summary(BSSout)$adjr2)
+BestAdjR2= which.max(summary(BSSout)$adjr2)
+coef(BSSout,BestAdjR2)
+```
+
+```{r}
+MBSS1 <-lm(logGross ~  LogNum_voted_users +LogNum_critic_for_reviews   + LogBudget +  OtherLan+ Portuguese +Japanese+ NotRated +Horror+ Ryes  +PGyes + Other +Gyes  + LogImdb_score +   LogNum_user_for_reviews + Comedy , data = MovieClean2)
+#summary(MBSS1)
+MBSS2 <-lm(logGross ~  LogNum_voted_users +LogNum_critic_for_reviews   + LogBudget +  OtherLan  + Portuguese +Japanese+ NotRated +Horror+ Ryes   , data = MovieClean2)
+#summary(MBSS2)
+anova(MBSS1,MBSS2)
+```
+
+
+##Final Model
+$\widehat{LogGross of a movie}$=LogNum_voted_users + LogNum_critic_for_reviews + LogBudget + 
+    OtherLan + Portuguese + Japanese + NotRated + Horror + Ryes + 
+    PGyes + Other + Gyes + LogImdb_score + LogNum_user_for_reviews + 
+    Comedy
