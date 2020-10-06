@@ -1,6 +1,6 @@
 ---
 title: "Movie Project Writeup"
-author: "Evangeline Chen, Josh Walls"
+author: "Yinzhi Chen"
 date: "4/8/2019"
 output: pdf_document
 ---
